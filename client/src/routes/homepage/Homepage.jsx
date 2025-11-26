@@ -5,7 +5,7 @@ const Homepage = () => {
   return (
     <div className="homepage">
       <h1>Quick Draw</h1>
-      <p className="homepage-subtitle">Master your learning with flashcards</p>
+      <p className="homepage-subtitle">Practice your flashcards with your personal AI language tutor</p>
       <div className="homepage-buttons">
         <Link to="/dashboard" className="btn btn-secondary">
           Sign In

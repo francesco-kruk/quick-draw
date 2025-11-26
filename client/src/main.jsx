@@ -6,8 +6,8 @@ import Homepage from "./routes/homepage/Homepage";
 import DashboardPage from "./routes/dashboardPage/DashboardPage";
 import DecksPage from "./routes/decksPage/DecksPage";
 import SettingsPage from "./routes/settingsPage/SettingsPage";
-import SignInPage from "./routes/signInPage/signInPage";
-import SignUpPage from "./routes/signUpPage/signUpPage";
+import SignInPage from "./routes/signInPage/SignInPage";
+import SignUpPage from "./routes/signUpPage/SignUpPage";
 import DashboardLayout from "./layouts/DashboardLayout";
 
 const router = createBrowserRouter([

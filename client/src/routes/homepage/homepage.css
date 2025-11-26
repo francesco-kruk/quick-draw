@@ -1,6 +1,55 @@
 .homepage {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  gap: 1rem;
+}
+
+.homepage h1 {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.homepage-subtitle {
+  color: #a0a0a0;
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.homepage-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: #6c5ce7;
+  color: #ffffff;
+  border: 2px solid #6c5ce7;
+}
+
+.btn-primary:hover {
+  background-color: #5b4cdb;
+  border-color: #5b4cdb;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: #ececec;
+  border: 2px solid #ececec;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(236, 236, 236, 0.1);
 }

@@ -8,6 +8,7 @@ import DecksPage from "./routes/decksPage/DecksPage";
 import SettingsPage from "./routes/settingsPage/SettingsPage";
 import SignInPage from "./routes/signInPage/signInPage";
 import SignUpPage from "./routes/signUpPage/signUpPage";
+import DashboardLayout from "./layouts/DashboardLayout";
 
 const router = createBrowserRouter([
   {
@@ -24,15 +25,21 @@ const router = createBrowserRouter([
   },
   {
     path: "/dashboard",
-    element: <DashboardPage />,
-  },
-  {
-    path: "/decks",
-    element: <DecksPage />,
-  },
-  {
-    path: "/settings",
-    element: <SettingsPage />,
+    element: <DashboardLayout />,
+    children: [
+      {
+        index: true,
+        element: <DashboardPage />,
+      },
+      {
+        path: "decks",
+        element: <DecksPage />,
+      },
+      {
+        path: "settings",
+        element: <SettingsPage />,
+      },
+    ],
   },
 ]);
 

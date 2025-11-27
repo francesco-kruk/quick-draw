@@ -42,6 +42,43 @@
   font-weight: 500;
 }
 
+.deck-cards-count-badge {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.deck-header-edit-btn {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease;
+  margin-left: 0.5rem;
+}
+
+.deck-header-edit-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.deck-header-edit-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.4);
+}
+
+.deck-header-edit-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.4);
+}
+
+.deck-meta-actions {
+  margin-top: 1rem;
+}
+
 /* Loading and Error States */
 .loading-text {
   color: #666;

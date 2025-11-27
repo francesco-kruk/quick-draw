@@ -1,25 +1,28 @@
 import { supabase } from './supabaseClient';
 
 /**
- * List all decks for the current user, ordered by most recently updated
+ * List all decks for the current user, ordered by most recently updated.
+ * Includes cards_count for scalable card counting.
+ * Note: If cards_count drifts, run fn_recompute_deck_counts() on the database.
  */
 export const listDecks = async () => {
   const { data, error } = await supabase
     .from('decks')
-    .select('*')
+    .select('id, name, language, cards_count, created_at, updated_at')
     .order('updated_at', { ascending: false });
 
   return { data, error };
 };
 
 /**
- * Get a single deck by ID
+ * Get a single deck by ID.
+ * Includes cards_count for display.
  * @param {string} deckId - The deck ID
  */
 export const getDeck = async (deckId) => {
   const { data, error } = await supabase
     .from('decks')
-    .select('*')
+    .select('id, name, language, cards_count, created_at, updated_at')
     .eq('id', deckId)
     .single();
 

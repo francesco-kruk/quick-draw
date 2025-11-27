@@ -1,70 +1,61 @@
-import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import './dashboardLayout.css';
 
 const DashboardLayout = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  const closeMenu = () => {
-    setIsMenuOpen(false);
-  };
-
   return (
     <div className="dashboard-layout">
-      {/* Hamburger Button */}
-      <button className="hamburger-btn" onClick={toggleMenu} aria-label="Toggle menu">
-        <span className="hamburger-icon">
-          <span></span>
-          <span></span>
-          <span></span>
-        </span>
-      </button>
-
-      {/* Overlay */}
-      <div 
-        className={`sidebar-overlay ${isMenuOpen ? 'active' : ''}`} 
-        onClick={closeMenu}
-      ></div>
-
-      {/* Sidebar */}
-      <nav className={`sidebar ${isMenuOpen ? 'open' : ''}`}>
-        <button className="close-btn" onClick={closeMenu} aria-label="Close menu">
-          ✕
-        </button>
-        <div className="sidebar-nav">
-          <NavLink 
-            to="/dashboard" 
-            end
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Dashboard
-          </NavLink>
-          <NavLink 
-            to="/dashboard/decks" 
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Decks
-          </NavLink>
-          <NavLink 
-            to="/dashboard/settings" 
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            onClick={closeMenu}
-          >
-            Settings
-          </NavLink>
-        </div>
-      </nav>
-
       {/* Main Content */}
-      <main className="main-content">
+      <main className="dashboard-content">
         <Outlet />
       </main>
+
+      {/* Bottom Navigation */}
+      <nav className="bottom-nav">
+        <ul className="nav-items">
+          <li>
+            <NavLink
+              to="/dashboard"
+              end
+              className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+              aria-label="Dashboard"
+            >
+              <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <span>Dashboard</span>
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/dashboard/decks"
+              className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+              aria-label="Decks"
+            >
+              <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="M6 8h12" />
+                <path d="M6 12h12" />
+                <path d="M6 16h8" />
+              </svg>
+              <span>Decks</span>
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/dashboard/settings"
+              className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
+              aria-label="Settings"
+            >
+              <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              <span>Settings</span>
+            </NavLink>
+          </li>
+        </ul>
+      </nav>
     </div>
   );
 };

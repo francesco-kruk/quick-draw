@@ -7,10 +7,10 @@ const Homepage = () => {
       <h1>Quick Draw</h1>
       <p className="homepage-subtitle">Practice your flashcards with your personal AI language tutor</p>
       <div className="homepage-buttons">
-        <Link to="/dashboard" className="btn btn-secondary">
+        <Link to="/sign-in" className="btn btn-secondary">
           Sign In
         </Link>
-        <Link to="/dashboard" className="btn btn-primary">
+        <Link to="/sign-in" className="btn btn-primary">
           Sign Up
         </Link>
       </div>

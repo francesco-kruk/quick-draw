@@ -9,31 +9,49 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        upsertProfile(session.user);
-      }
-      setLoading(false);
-    });
+    let subscription = null;
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    const initAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+        }
         setSession(session);
         setUser(session?.user ?? null);
-
-        // Upsert profile on sign in
-        if (event === 'SIGNED_IN' && session?.user) {
-          await upsertProfile(session.user);
+        if (session?.user) {
+          upsertProfile(session.user);
         }
+      } catch (error) {
+        console.error('Failed to get session:', error);
+      } finally {
+        setLoading(false);
       }
-    );
+
+      try {
+        // Listen for auth state changes
+        const { data } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+
+            // Upsert profile on sign in
+            if (event === 'SIGNED_IN' && session?.user) {
+              await upsertProfile(session.user);
+            }
+          }
+        );
+        subscription = data?.subscription;
+      } catch (error) {
+        console.error('Failed to set up auth listener:', error);
+      }
+    };
+
+    initAuth();
 
     return () => {
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
@@ -87,6 +105,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    const { data: { user: refreshedUser }, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error('Error refreshing user:', error);
+      throw error;
+    }
+    setUser(refreshedUser);
+    return refreshedUser;
+  };
+
   const value = {
     user,
     session,
@@ -94,6 +122,7 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signOut,
+    refreshUser,
   };
 
   return (

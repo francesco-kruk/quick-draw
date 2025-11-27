@@ -1,6 +1,211 @@
 .settings-page {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  padding: 2rem;
+  max-width: 600px;
+  margin: 0 auto;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-page h1 {
+  margin: 0 0 1.5rem 0;
+  color: #ececec;
+}
+
+.settings-page h2 {
+  margin: 0 0 1rem 0;
+  color: #ececec;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Sections */
+.settings-section {
+  background: #1a1625;
+  border: 1px solid #2d2640;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Profile Info */
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.profile-label {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.profile-value {
+  color: #ececec;
+  font-weight: 500;
+}
+
+/* Messages */
+.success-message {
+  background: #064e3b;
+  color: #34d399;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.error-message {
+  background: #450a0a;
+  color: #f87171;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+/* Email Form */
+.email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.email-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.email-form input {
+  flex: 1;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #3d3654;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: #0e0c16;
+  color: #ececec;
+}
+
+.email-form input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.email-form input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input-error {
+  border-color: #dc2626 !important;
+}
+
+/* Status Badge */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+}
+
+.status-badge.verified {
+  background: #064e3b;
+  color: #34d399;
+}
+
+.status-badge.pending {
+  background: #713f12;
+  color: #fbbf24;
+}
+
+.status-badge.unverified {
+  background: #450a0a;
+  color: #f87171;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: #667eea;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #5a67d8;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background: #450a0a;
+  color: #f87171;
+  border: 1px solid #7f1d1d;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #7f1d1d;
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Logout Section */
+.logout-section {
+  margin-top: auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.btn-logout {
+  width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .settings-page {
+    padding: 1rem;
+  }
+
+  .email-input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .email-form input {
+    width: 100%;
+  }
+
+  .status-badge {
+    align-self: flex-start;
+  }
 }

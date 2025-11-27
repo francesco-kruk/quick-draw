@@ -10,7 +10,7 @@ const Homepage = () => {
         <Link to="/sign-in" className="btn btn-secondary">
           Sign In
         </Link>
-        <Link to="/sign-in" className="btn btn-primary">
+        <Link to="/sign-up" className="btn btn-primary">
           Sign Up
         </Link>
       </div>

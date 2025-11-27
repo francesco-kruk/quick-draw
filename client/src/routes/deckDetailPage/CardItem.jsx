@@ -8,6 +8,13 @@ const truncateText = (text, maxLength = MAX_PREVIEW_LENGTH) => {
 };
 
 const CardItem = ({ card, onEdit, onDelete }) => {
+  const handleDelete = () => {
+    if (!window.confirm('Delete this card? This action cannot be undone.')) {
+      return;
+    }
+    onDelete();
+  };
+
   return (
     <div className="card-item">
       <div className="card-content">
@@ -32,7 +39,7 @@ const CardItem = ({ card, onEdit, onDelete }) => {
         <button
           type="button"
           className="btn btn-danger btn-sm"
-          onClick={onDelete}
+          onClick={handleDelete}
           aria-label={`Delete card: ${truncateText(card.front_text, 30)}`}
         >
           Delete

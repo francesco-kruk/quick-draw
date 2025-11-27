@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getDeck } from '../../lib/decksService';
+import { getDeck, updateDeck, deleteDeck } from '../../lib/decksService';
 import { listCards, createCard, updateCard, deleteCard, getCard } from '../../lib/cardsService';
 import CardItem from './CardItem';
 import CardModal from './CardModal';
+import EditDeckModal from '../../components/EditDeckModal';
 import './deckDetailPage.css';
 
 const DeckDetailPage = () => {
@@ -24,6 +25,10 @@ const DeckDetailPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+
+  // Deck edit modal state
+  const [isEditDeckModalOpen, setIsEditDeckModalOpen] = useState(false);
+  const [deletingDeck, setDeletingDeck] = useState(false);
 
   // Load deck
   useEffect(() => {
@@ -177,6 +182,41 @@ const DeckDetailPage = () => {
     }
   };
 
+  const handleEditDeck = async ({ name, language }) => {
+    const originalDeck = deck;
+    const updates = { name, language };
+
+    // Optimistic update
+    setDeck((prev) => ({ ...prev, ...updates, updated_at: new Date().toISOString() }));
+
+    const { error: updateErr } = await updateDeck(deckId, updates);
+
+    if (updateErr) {
+      // Rollback
+      setDeck(originalDeck);
+      console.error('Error updating deck:', updateErr);
+      throw new Error('Failed to update deck. Please try again.');
+    }
+  };
+
+  const handleDeleteDeck = async () => {
+    if (!window.confirm('Delete this deck and all its cards? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingDeck(true);
+
+    const { error } = await deleteDeck(deckId);
+
+    if (error) {
+      setDeletingDeck(false);
+      console.error('Error deleting deck:', error);
+      alert('Failed to delete deck. Please try again.');
+    } else {
+      navigate('/decks');
+    }
+  };
+
   if (deckLoading) {
     return (
       <div className="deck-detail-page">
@@ -205,6 +245,41 @@ const DeckDetailPage = () => {
         <div className="deck-title-row">
           <h1>{deck?.name}</h1>
           {deck?.language && <span className="deck-language-badge">{deck.language}</span>}
+          <span className="deck-cards-count-badge">
+            {deck?.cards_count ?? cards.length} {(deck?.cards_count ?? cards.length) === 1 ? 'card' : 'cards'}
+          </span>
+          <button
+            type="button"
+            className="deck-header-edit-btn"
+            onClick={() => setIsEditDeckModalOpen(true)}
+            aria-label="Edit Deck"
+            title="Edit Deck"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        </div>
+        <div className="deck-meta-actions">
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={handleDeleteDeck}
+            disabled={deletingDeck}
+          >
+            {deletingDeck ? 'Deleting...' : 'Delete Deck'}
+          </button>
         </div>
       </div>
 
@@ -243,6 +318,13 @@ const DeckDetailPage = () => {
         initialCard={editingCard}
         deckId={deckId}
         onSave={handleCardSave}
+      />
+
+      <EditDeckModal
+        isOpen={isEditDeckModalOpen}
+        onClose={() => setIsEditDeckModalOpen(false)}
+        deck={deck}
+        onSave={handleEditDeck}
       />
     </div>
   );

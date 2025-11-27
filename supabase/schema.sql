@@ -201,3 +201,43 @@ CREATE TRIGGER cards_count_on_update
 --   UPDATE decks d SET cards_count = (SELECT COUNT(*) FROM cards c WHERE c.deck_id = d.id);
 -- END;
 -- $$ LANGUAGE plpgsql;
+
+-- ======================
+-- CARD_PROGRESS TABLE (Spaced Repetition)
+-- ======================
+CREATE TABLE IF NOT EXISTS public.card_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  repetitions INT NOT NULL DEFAULT 0,
+  ease_factor REAL NOT NULL DEFAULT 2.5,
+  interval_days INT NOT NULL DEFAULT 0,
+  due_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  last_reviewed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, card_id)
+);
+
+-- Enable RLS on card_progress
+ALTER TABLE public.card_progress ENABLE ROW LEVEL SECURITY;
+
+-- Card progress policies: users can only access their own progress
+CREATE POLICY "Users can view their own card progress"
+  ON public.card_progress
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own card progress"
+  ON public.card_progress
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own card progress"
+  ON public.card_progress
+  FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own card progress"
+  ON public.card_progress
+  FOR DELETE
+  USING (auth.uid() = user_id);

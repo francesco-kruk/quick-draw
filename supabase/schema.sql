@@ -81,3 +81,54 @@ CREATE TRIGGER update_decks_updated_at
   BEFORE UPDATE ON decks
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- ======================
+-- CARDS TABLE
+-- ======================
+CREATE TABLE IF NOT EXISTS public.cards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deck_id UUID NOT NULL REFERENCES public.decks(id) ON DELETE CASCADE,
+  front_text TEXT NOT NULL,
+  back_text TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Optional length constraints
+ALTER TABLE public.cards
+  ADD CONSTRAINT cards_front_text_length CHECK (char_length(front_text) <= 500),
+  ADD CONSTRAINT cards_back_text_length CHECK (char_length(back_text) <= 500);
+
+-- Trigger to auto-update updated_at on cards
+CREATE TRIGGER update_cards_updated_at
+  BEFORE UPDATE ON public.cards
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Enable RLS on cards
+ALTER TABLE public.cards ENABLE ROW LEVEL SECURITY;
+
+-- Cards policies: users can only access cards in their own decks
+CREATE POLICY "Cards Select" ON public.cards
+  FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM public.decks d WHERE d.id = deck_id AND d.user_id = auth.uid())
+  );
+
+CREATE POLICY "Cards Insert" ON public.cards
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.decks d WHERE d.id = deck_id AND d.user_id = auth.uid())
+  );
+
+CREATE POLICY "Cards Update" ON public.cards
+  FOR UPDATE
+  USING (
+    EXISTS (SELECT 1 FROM public.decks d WHERE d.id = deck_id AND d.user_id = auth.uid())
+  );
+
+CREATE POLICY "Cards Delete" ON public.cards
+  FOR DELETE
+  USING (
+    EXISTS (SELECT 1 FROM public.decks d WHERE d.id = deck_id AND d.user_id = auth.uid())
+  );

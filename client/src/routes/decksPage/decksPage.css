@@ -109,6 +109,15 @@
   color: #333;
 }
 
+.deck-link {
+  text-decoration: none;
+}
+
+.deck-link:hover {
+  text-decoration: underline;
+  color: #667eea;
+}
+
 .deck-language {
   background: #e0e7ff;
   color: #4338ca;

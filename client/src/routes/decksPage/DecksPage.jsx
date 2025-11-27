@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { listDecks, createDeck, updateDeck, deleteDeck } from '../../lib/decksService';
 import { LANGUAGES } from '../../lib/languages';
 import './decksPage.css';
@@ -250,12 +251,20 @@ const DecksPage = () => {
               ) : (
                 <div className="deck-display">
                   <div className="deck-info">
-                    <span className="deck-name">{deck.name}</span>
+                    <Link to={`/decks/${deck.id}`} className="deck-name deck-link">
+                      {deck.name}
+                    </Link>
                     {deck.language && (
                       <span className="deck-language">{deck.language}</span>
                     )}
                   </div>
                   <div className="deck-actions">
+                    <Link
+                      to={`/decks/${deck.id}`}
+                      className="btn btn-secondary btn-sm"
+                    >
+                      View
+                    </Link>
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"

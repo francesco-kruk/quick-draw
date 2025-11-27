@@ -28,7 +28,7 @@ const DashboardLayout = () => {
           </li>
           <li>
             <NavLink
-              to="/dashboard/decks"
+              to="/decks"
               className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
               aria-label="Decks"
             >
@@ -43,7 +43,7 @@ const DashboardLayout = () => {
           </li>
           <li>
             <NavLink
-              to="/dashboard/settings"
+              to="/settings"
               className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}
               aria-label="Settings"
             >

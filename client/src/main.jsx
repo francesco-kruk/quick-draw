@@ -5,6 +5,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Homepage from "./routes/homepage/Homepage";
 import DashboardPage from "./routes/dashboardPage/DashboardPage";
 import DecksPage from "./routes/decksPage/DecksPage";
+import DeckDetailPage from "./routes/deckDetailPage/DeckDetailPage";
 import SettingsPage from "./routes/settingsPage/SettingsPage";
 import SignInPage from "./routes/signInPage/SignInPage";
 import SignUpPage from "./routes/signUpPage/SignUpPage";
@@ -26,25 +27,18 @@ const router = createBrowserRouter([
     element: <SignUpPage />,
   },
   {
-    path: "/dashboard",
+    // Pathless layout route to share DashboardLayout across multiple top-level paths
     element: (
       <RequireAuth>
         <DashboardLayout />
       </RequireAuth>
     ),
     children: [
-      {
-        index: true,
-        element: <DashboardPage />,
-      },
-      {
-        path: "decks",
-        element: <DecksPage />,
-      },
-      {
-        path: "settings",
-        element: <SettingsPage />,
-      },
+      { path: "/dashboard", element: <DashboardPage /> },
+      { path: "/decks", element: <DecksPage /> },
+      { path: "/decks/:deckId", element: <DeckDetailPage /> },
+      { path: "/decks/:deckId/:cardId", element: <DeckDetailPage /> },
+      { path: "/settings", element: <SettingsPage /> },
     ],
   },
 ]);

@@ -13,6 +13,20 @@ export const listDecks = async () => {
 };
 
 /**
+ * Get a single deck by ID
+ * @param {string} deckId - The deck ID
+ */
+export const getDeck = async (deckId) => {
+  const { data, error } = await supabase
+    .from('decks')
+    .select('*')
+    .eq('id', deckId)
+    .single();
+
+  return { data, error };
+};
+
+/**
  * Create a new deck
  * @param {Object} deck - The deck to create
  * @param {string} deck.name - Required deck name

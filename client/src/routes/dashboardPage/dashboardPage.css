@@ -1,6 +1,192 @@
 .dashboard-page {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.dashboard-content {
+  width: 100%;
+}
+
+.dashboard-page h1 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.dashboard-subtitle {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+.loading-text {
+  color: #666;
+}
+
+.error-message {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  min-height: 100vh;
+  gap: 1rem;
+}
+
+.retry-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.retry-btn:hover {
+  background: #b91c1c;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h2 {
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+.browse-decks-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.browse-decks-btn:hover {
+  background: #5a67d8;
+}
+
+/* Due Decks List */
+.due-decks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.due-deck-item-wrapper {
+  margin-bottom: 0.75rem;
+}
+
+.due-deck-item {
+  width: 100%;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.due-deck-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: #fafbfc;
+  border-color: #667eea;
+}
+
+.due-deck-item:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4);
+}
+
+.due-deck-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.due-deck-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.due-deck-language {
+  background: #e0e7ff;
+  color: #4338ca;
+  padding: 0.25rem 0.625rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.due-deck-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.due-count {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.25rem 0.625rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.study-arrow {
+  color: #667eea;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .dashboard-page {
+    padding: 1rem;
+  }
+
+  .due-deck-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .due-deck-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

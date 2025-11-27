@@ -30,6 +30,7 @@ const SignInPage = () => {
       // The `if (user)` check at the top will handle navigation once auth state updates
     } catch (err) {
       setError(err.message || 'Failed to sign in. Please try again.');
+    } finally {
       setLoading(false);
     }
   };

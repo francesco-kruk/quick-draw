@@ -151,23 +151,6 @@ const EditDeckModal = ({ isOpen, onClose, deck, onSave }) => {
             {nameError && <span className="inline-error">{nameError}</span>}
           </div>
 
-          <div className="form-group">
-            <label htmlFor="deck-language">Language</label>
-            <select
-              id="deck-language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              disabled={saving}
-            >
-              <option value="">Select language (optional)</option>
-              {LANGUAGES.map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="modal-actions">
             <button
               type="button"

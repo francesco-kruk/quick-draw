@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { getDueDecks, toUTC } from '../../lib/srsService';
+import { listDecks } from '../../lib/decksService';
 import { LANGUAGES } from '../../lib/languages';
 import './dashboardPage.css';
 
@@ -9,6 +10,7 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [dueDecks, setDueDecks] = useState([]);
+  const [hasDecks, setHasDecks] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -21,6 +23,25 @@ const DashboardPage = () => {
   const loadDueDecks = async () => {
     setLoading(true);
     setError(null);
+
+    // First check if user has any decks
+    const { data: allDecks, error: decksError } = await listDecks();
+
+    if (decksError) {
+      setError('Failed to load decks. Please try again.');
+      console.error('Error loading decks:', decksError);
+      setLoading(false);
+      return;
+    }
+
+    if (!allDecks || allDecks.length === 0) {
+      setHasDecks(false);
+      setDueDecks([]);
+      setLoading(false);
+      return;
+    }
+
+    setHasDecks(true);
 
     const nowUTC = toUTC();
     const { data, error: fetchError } = await getDueDecks(user.id, nowUTC);
@@ -69,7 +90,18 @@ const DashboardPage = () => {
           </div>
         )}
 
-        {!error && dueDecks.length === 0 && (
+        {!error && !hasDecks && (
+          <div className="empty-state">
+            <div className="empty-icon">👋</div>
+            <h2>Welcome to Quick Draw!</h2>
+            <p>Create your first deck and add cards to start learning.</p>
+            <button onClick={() => navigate('/decks')} className="browse-decks-btn">
+              Create Deck
+            </button>
+          </div>
+        )}
+
+        {!error && hasDecks && dueDecks.length === 0 && (
           <div className="empty-state">
             <div className="empty-icon">🎉</div>
             <h2>No cards due!</h2>

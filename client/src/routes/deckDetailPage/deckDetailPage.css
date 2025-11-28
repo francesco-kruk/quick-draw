@@ -75,8 +75,17 @@
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.4);
 }
 
-.deck-meta-actions {
-  margin-top: 1rem;
+.editable-deck-name {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.editable-deck-name:hover {
+  color: #667eea;
+}
+
+.delete-deck-btn {
+  margin-left: auto;
 }
 
 /* Loading and Error States */

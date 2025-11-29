@@ -72,8 +72,9 @@ export const calculateSM2 = (progress, quality) => {
  * Missing rows are created with due_at = now (immediately due)
  * @param {string} userId - The user ID
  * @param {string} deckId - The deck ID
+ * @param {string} nowUTC - Current time in UTC ISO string (optional)
  */
-export const ensureProgressForDeck = async (userId, deckId) => {
+export const ensureProgressForDeck = async (userId, deckId, nowUTC = toUTC()) => {
   // Get all cards in the deck
   const { data: cards, error: cardsError } = await supabase
     .from('cards')
@@ -108,7 +109,6 @@ export const ensureProgressForDeck = async (userId, deckId) => {
 
   // Insert missing progress rows
   if (missingCardIds.length > 0) {
-    const nowUTC = toUTC();
     const newRows = missingCardIds.map((cardId) => ({
       user_id: userId,
       card_id: cardId,
@@ -157,8 +157,8 @@ export const getDueDecks = async (userId, nowUTC = toUTC()) => {
   const dueDecks = [];
 
   for (const deck of decks) {
-    // Ensure progress rows exist
-    await ensureProgressForDeck(userId, deck.id);
+    // Ensure progress rows exist (use same nowUTC for consistent comparison)
+    await ensureProgressForDeck(userId, deck.id, nowUTC);
 
     // Get cards in this deck
     const { data: cards, error: cardsError } = await supabase

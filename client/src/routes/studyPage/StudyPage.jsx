@@ -52,11 +52,12 @@ const StudyPage = () => {
 
       if (existingSession && existingSession.cardIds.length > 0) {
         // Resume session - rebuild queue from card IDs
-        await ensureProgressForDeck(user.id, deckId);
+        const nowUTC = toUTC();
+        await ensureProgressForDeck(user.id, deckId, nowUTC);
         const { data: dueCards, error: cardsError } = await getDueCards(
           user.id,
           deckId,
-          toUTC()
+          nowUTC
         );
 
         if (cardsError) {
@@ -91,11 +92,12 @@ const StudyPage = () => {
         }
       } else {
         // Start new session
-        await ensureProgressForDeck(user.id, deckId);
+        const nowUTC = toUTC();
+        await ensureProgressForDeck(user.id, deckId, nowUTC);
         const { data: dueCards, error: cardsError } = await getDueCards(
           user.id,
           deckId,
-          toUTC()
+          nowUTC
         );
 
         if (cardsError) {

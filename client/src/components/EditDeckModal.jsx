@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { LANGUAGES } from '../lib/languages';
 import './editDeckModal.css';
 
 const EditDeckModal = ({ isOpen, onClose, deck, onSave }) => {

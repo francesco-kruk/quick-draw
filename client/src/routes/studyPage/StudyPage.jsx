@@ -5,6 +5,8 @@ import { getDeck } from '../../lib/decksService';
 import {
   ensureProgressForDeck,
   getDueCards,
+  getSubDayCards,
+  getAllLearningCards,
   gradeCardWithRating,
   saveSession,
   loadSession,
@@ -12,6 +14,10 @@ import {
   toUTC,
   RATING,
   CARD_STATE,
+  getDeckOptions,
+  previewNextIntervals,
+  formatInterval,
+  isSubDayScheduled,
 } from '../../lib/srsService';
 import './studyPage.css';
 
@@ -21,6 +27,7 @@ const StudyPage = () => {
   const { user } = useAuth();
 
   const [deck, setDeck] = useState(null);
+  const [deckOptions, setDeckOptions] = useState(null);
   const [queue, setQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -41,12 +48,17 @@ const StudyPage = () => {
     setError(null);
 
     try {
-      // Load deck info
-      const { data: deckData, error: deckError } = await getDeck(deckId);
-      if (deckError) {
+      // Load deck info and options in parallel
+      const [deckResult, optionsResult] = await Promise.all([
+        getDeck(deckId),
+        getDeckOptions(deckId),
+      ]);
+
+      if (deckResult.error) {
         throw new Error('Failed to load deck');
       }
-      setDeck(deckData);
+      setDeck(deckResult.data);
+      setDeckOptions(optionsResult.data || {});
 
       // Check for existing session
       const existingSession = loadSession(user.id, deckId);
@@ -151,28 +163,75 @@ const StudyPage = () => {
         throw new Error('Failed to save grade');
       }
 
-      // For learning cards with Again rating, we need to refresh the queue
+      // For learning cards with Again or Hard rating, we need to refresh the queue
       // to get the updated due time and potentially requeue the card
-      if (rating === RATING.AGAIN && 
-          (currentCard.progress.state === CARD_STATE.LEARNING || 
-           currentCard.progress.state === CARD_STATE.NEW)) {
+      const isAgainOrHard = rating === RATING.AGAIN || rating === RATING.HARD;
+      const isLearningOrNew = currentCard.progress.state === CARD_STATE.LEARNING || 
+                              currentCard.progress.state === CARD_STATE.NEW;
+      
+      if (isAgainOrHard && isLearningOrNew) {
         // Card will be requeued with a short delay - refresh from DB
         const nowUTC = toUTC();
         const { data: freshDueCards } = await getDueCards(user.id, deckId, nowUTC);
         
-        if (freshDueCards && freshDueCards.length > 0) {
-          setQueue(freshDueCards);
+        // Also get sub-day cards that might be due soon
+        const { data: subDayCards } = await getSubDayCards(user.id, deckId, nowUTC);
+        
+        // Combine due cards with sub-day cards, avoiding duplicates
+        const dueCardIds = new Set((freshDueCards || []).map((item) => item.card.id));
+        const additionalSubDayCards = (subDayCards || []).filter(
+          (item) => !dueCardIds.has(item.card.id)
+        );
+        const combinedQueue = [...(freshDueCards || []), ...additionalSubDayCards];
+        
+        if (combinedQueue.length > 0) {
+          setQueue(combinedQueue);
           setCurrentIndex(0);
           setRevealed(false);
           saveSession(
             user.id,
             deckId,
-            freshDueCards.map((item) => item.card.id),
+            combinedQueue.map((item) => item.card.id),
             0
           );
         } else {
-          clearSession(user.id, deckId);
-          setCompleted(true);
+          // No due cards but there might be a single card marked again/hard
+          // that's not yet due - keep showing it until user marks good/easy
+          if (currentCard) {
+            // Re-fetch the current card's updated progress
+            const { data: updatedProgress } = await getDueCards(user.id, deckId, nowUTC);
+            const { data: updatedSubDay } = await getSubDayCards(user.id, deckId, nowUTC);
+            
+            // Find the current card in either list
+            const allCards = [...(updatedProgress || []), ...(updatedSubDay || [])];
+            const currentCardUpdated = allCards.find(
+              (item) => item.card.id === currentCard.card.id
+            );
+            
+            if (currentCardUpdated && currentCardUpdated.progress.state === CARD_STATE.LEARNING) {
+              // Keep showing this card - it's still in learning
+              setQueue([currentCardUpdated]);
+              setCurrentIndex(0);
+              setRevealed(false);
+              saveSession(user.id, deckId, [currentCardUpdated.card.id], 0);
+            } else {
+              clearSession(user.id, deckId);
+              setCompleted(true);
+            }
+          } else {
+            // Before ending session, verify no learning cards remain
+            const { data: remainingLearning } = await getAllLearningCards(user.id, deckId);
+            if (remainingLearning && remainingLearning.length > 0) {
+              // There are still learning cards - keep session alive with them
+              setQueue(remainingLearning);
+              setCurrentIndex(0);
+              setRevealed(false);
+              saveSession(user.id, deckId, remainingLearning.map((item) => item.card.id), 0);
+            } else {
+              clearSession(user.id, deckId);
+              setCompleted(true);
+            }
+          }
         }
       } else {
         // Move to next card
@@ -182,21 +241,39 @@ const StudyPage = () => {
           // Check if there are more due cards (learning cards may have become due)
           const nowUTC = toUTC();
           const { data: freshDueCards } = await getDueCards(user.id, deckId, nowUTC);
+          const { data: subDayCards } = await getSubDayCards(user.id, deckId, nowUTC);
           
-          if (freshDueCards && freshDueCards.length > 0) {
-            setQueue(freshDueCards);
+          // Combine due cards with sub-day cards, avoiding duplicates
+          const dueCardIds = new Set((freshDueCards || []).map((item) => item.card.id));
+          const additionalSubDayCards = (subDayCards || []).filter(
+            (item) => !dueCardIds.has(item.card.id)
+          );
+          const combinedQueue = [...(freshDueCards || []), ...additionalSubDayCards];
+          
+          if (combinedQueue.length > 0) {
+            setQueue(combinedQueue);
             setCurrentIndex(0);
             setRevealed(false);
             saveSession(
               user.id,
               deckId,
-              freshDueCards.map((item) => item.card.id),
+              combinedQueue.map((item) => item.card.id),
               0
             );
           } else {
-            // Session complete
-            clearSession(user.id, deckId);
-            setCompleted(true);
+            // Before ending session, verify no learning cards remain
+            const { data: remainingLearning } = await getAllLearningCards(user.id, deckId);
+            if (remainingLearning && remainingLearning.length > 0) {
+              // There are still learning cards - keep session alive with them
+              setQueue(remainingLearning);
+              setCurrentIndex(0);
+              setRevealed(false);
+              saveSession(user.id, deckId, remainingLearning.map((item) => item.card.id), 0);
+            } else {
+              // Session complete - no learning cards remain
+              clearSession(user.id, deckId);
+              setCompleted(true);
+            }
           }
         } else {
           setCurrentIndex(newIndex);
@@ -306,6 +383,11 @@ const StudyPage = () => {
   const cardState = currentCard?.progress?.state || CARD_STATE.NEW;
   const isLearning = cardState === CARD_STATE.LEARNING || cardState === CARD_STATE.NEW;
 
+  // Preview next intervals for each rating
+  const intervals = currentCard
+    ? previewNextIntervals(currentCard.progress, deckOptions)
+    : null;
+
   return (
     <div className="study-page">
       <div className="study-content">
@@ -355,6 +437,7 @@ const StudyPage = () => {
                 className="grade-btn again"
                 disabled={grading}
               >
+                <span className="grade-interval">{intervals ? formatInterval(intervals.again) : ''}</span>
                 Again
                 <span className="keyboard-hint">0</span>
               </button>
@@ -363,6 +446,7 @@ const StudyPage = () => {
                 className="grade-btn hard"
                 disabled={grading}
               >
+                <span className="grade-interval">{intervals ? formatInterval(intervals.hard) : ''}</span>
                 Hard
                 <span className="keyboard-hint">1</span>
               </button>
@@ -372,6 +456,7 @@ const StudyPage = () => {
                 disabled={grading}
                 autoFocus
               >
+                <span className="grade-interval">{intervals ? formatInterval(intervals.good) : ''}</span>
                 Good
                 <span className="keyboard-hint">2</span>
               </button>
@@ -380,6 +465,7 @@ const StudyPage = () => {
                 className="grade-btn easy"
                 disabled={grading}
               >
+                <span className="grade-interval">{intervals ? formatInterval(intervals.easy) : ''}</span>
                 Easy
                 <span className="keyboard-hint">3</span>
               </button>

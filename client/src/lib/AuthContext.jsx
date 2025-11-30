@@ -13,38 +13,27 @@ export const AuthProvider = ({ children }) => {
 
     const initAuth = async () => {
       try {
-        // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('Error getting session:', error);
-        }
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          upsertProfile(session.user);
-        }
-      } catch (error) {
-        console.error('Failed to get session:', error);
-      } finally {
-        setLoading(false);
-      }
-
-      try {
-        // Listen for auth state changes
+        // Set up auth listener first to avoid race conditions
         const { data } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
 
-            // Upsert profile on sign in
-            if (event === 'SIGNED_IN' && session?.user) {
+            // Upsert profile on sign in (handles both new and returning users)
+            if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
               await upsertProfile(session.user);
+            }
+            
+            // Set loading to false after initial session is processed
+            if (event === 'INITIAL_SESSION') {
+              setLoading(false);
             }
           }
         );
         subscription = data?.subscription;
       } catch (error) {
         console.error('Failed to set up auth listener:', error);
+        setLoading(false);
       }
     };
 

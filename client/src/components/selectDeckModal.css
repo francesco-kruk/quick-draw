@@ -1,0 +1,231 @@
+/* Modal Backdrop - reusing patterns from EditDeckModal */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+/* Modal Container */
+.modal.select-deck-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Modal Header */
+.select-deck-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.select-deck-modal .modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #333;
+}
+
+.select-deck-modal .modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.select-deck-modal .modal-close-btn:hover {
+  background: #f3f4f6;
+  color: #333;
+}
+
+/* Modal Body */
+.select-deck-modal .modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.select-deck-modal .modal-description {
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+}
+
+/* Deck List */
+.deck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.deck-option {
+  width: 100%;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.875rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.deck-option:hover {
+  background: #fafbfc;
+  border-color: #d1d5db;
+}
+
+.deck-option.selected {
+  background: #f0f4ff;
+  border-color: #667eea;
+  box-shadow: 0 0 0 1px #667eea;
+}
+
+.deck-option:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+}
+
+.deck-option-name {
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deck-option-language {
+  font-size: 0.8rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+/* Modal Footer */
+.select-deck-modal .modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.footer-right {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.all-decks-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.all-decks-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.cancel-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.cancel-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.confirm-btn {
+  background: #667eea;
+  border: none;
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  font-family: inherit;
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background: #5a67d8;
+}
+
+.confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .modal.select-deck-modal {
+    max-height: 90vh;
+  }
+
+  .select-deck-modal .modal-footer {
+    flex-direction: column;
+  }
+
+  .footer-right {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .footer-right button {
+    flex: 1;
+  }
+
+  .all-decks-btn {
+    width: 100%;
+  }
+}

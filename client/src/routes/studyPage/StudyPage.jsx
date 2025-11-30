@@ -17,7 +17,6 @@ import {
   getDeckOptions,
   previewNextIntervals,
   formatInterval,
-  isSubDayScheduled,
 } from '../../lib/srsService';
 import './studyPage.css';
 
@@ -301,7 +300,10 @@ const StudyPage = () => {
 
   const handleKeyDown = useCallback(
     (e) => {
-      if (loading || grading || completed || error) return;
+      if (loading || grading || error) return;
+
+      // Normal study mode
+      if (completed) return;
 
       if (!revealed) {
         if (e.key === ' ' || e.key === 'Enter') {
@@ -369,9 +371,11 @@ const StudyPage = () => {
             <div className="completion-icon">🎉</div>
             <h2>Review complete!</h2>
             <p>You've finished reviewing all due cards in this deck.</p>
-            <button onClick={handleBackToDashboard} className="back-btn primary">
-              Back to Dashboard
-            </button>
+            <div className="completion-actions">
+              <button onClick={handleBackToDashboard} className="back-btn primary">
+                Back to Dashboard
+              </button>
+            </div>
           </div>
         </div>
       </div>

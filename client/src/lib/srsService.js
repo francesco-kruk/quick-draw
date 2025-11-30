@@ -1,5 +1,14 @@
 import { supabase } from './supabaseClient';
 import { getDeckOptions } from './decksService';
+import { toUTC, computeLocalMidnight } from './dateUtils';
+import { parseLearningSteps } from './learningSteps';
+import { applyFuzz, calculateNewEaseFactor } from './srsMath';
+
+// Re-export utilities for backward compatibility
+export { toUTC, computeLocalMidnight } from './dateUtils';
+export { parseLearningSteps } from './learningSteps';
+export { applyFuzz } from './srsMath';
+export { getDeckOptions } from './decksService';
 
 /**
  * Spaced Repetition Service
@@ -14,106 +23,11 @@ export const RATING = {
   EASY: 4,
 };
 
-// Legacy quality grades (for backward compatibility)
-export const QUALITY = {
-  HARD: 3,
-  GOOD: 4,
-  EASY: 5,
-};
-
 // Card states
 export const CARD_STATE = {
   NEW: 'new',
   LEARNING: 'learning',
   REVIEW: 'review',
-};
-
-/**
- * Convert a Date to UTC ISO string
- * @param {Date} date - The date to convert
- * @returns {string} ISO string in UTC
- */
-export const toUTC = (date = new Date()) => {
-  return date.toISOString();
-};
-
-/**
- * Parse learning steps string into array of minutes
- * @param {string} stepsStr - e.g., '10m,1d' or '1m,10m,1d'
- * @returns {number[]} Array of step durations in minutes
- */
-export const parseLearningSteps = (stepsStr) => {
-  if (!stepsStr) return [10, 1440]; // Default: 10m, 1d
-
-  return stepsStr.split(',').map((step) => {
-    step = step.trim().toLowerCase();
-    const value = parseFloat(step);
-    if (step.endsWith('d')) {
-      return value * 24 * 60; // days to minutes
-    } else if (step.endsWith('h')) {
-      return value * 60; // hours to minutes
-    } else {
-      // Default to minutes (including 'm' suffix)
-      return value;
-    }
-  });
-};
-
-/**
- * Apply fuzz to interval to prevent cards from clustering
- * @param {number} intervalDays - The interval in days
- * @returns {number} Fuzzed interval in days
- */
-export const applyFuzz = (intervalDays) => {
-  if (intervalDays < 2) {
-    return intervalDays; // No fuzz for very short intervals
-  }
-
-  let fuzzRange;
-  if (intervalDays < 7) {
-    // Short intervals: ±1 day max
-    fuzzRange = Math.min(1, intervalDays * 0.15);
-  } else if (intervalDays < 30) {
-    // Medium intervals: ±5%
-    fuzzRange = intervalDays * 0.05;
-  } else {
-    // Long intervals: ±10%
-    fuzzRange = intervalDays * 0.10;
-  }
-
-  // Random value between -fuzzRange and +fuzzRange
-  const fuzz = (Math.random() * 2 - 1) * fuzzRange;
-  return Math.max(1, Math.round(intervalDays + fuzz));
-};
-
-/**
- * Map rating to SM-2 quality (q) for ease factor calculation
- * SM-2 uses q from 0-5, we map: Again=0, Hard=2, Good=3, Easy=5
- * @param {number} rating - RATING enum value
- * @returns {number} SM-2 quality value
- */
-const ratingToQuality = (rating) => {
-  switch (rating) {
-    case RATING.AGAIN: return 0;
-    case RATING.HARD: return 2;
-    case RATING.GOOD: return 3;
-    case RATING.EASY: return 5;
-    default: return 3;
-  }
-};
-
-/**
- * Calculate new ease factor using SM-2 formula
- * EF' = EF + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))
- * @param {number} easeFactor - Current ease factor
- * @param {number} rating - RATING enum value
- * @returns {number} New ease factor (minimum 1.3)
- */
-const calculateNewEaseFactor = (easeFactor, rating) => {
-  const q = ratingToQuality(rating);
-  const delta = 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02);
-  const newEF = easeFactor + delta;
-  return Math.max(1.3, newEF);
 };
 
 /**
@@ -153,44 +67,61 @@ export const scheduleNextReview = (progress, rating, deckOptions) => {
   let newStepIndex = learning_step_index;
   let dueAt;
 
+  // Fixed intervals for learning phase (in minutes)
+  const LEARNING_INTERVALS = {
+    AGAIN: 2,      // 2 minutes
+    HARD: 10,      // 10 minutes
+    GOOD: 1440,    // 1 day
+    EASY: 4 * 1440 // 4 days
+  };
+
   // Handle based on current state and rating
   if (state === CARD_STATE.NEW || state === CARD_STATE.LEARNING) {
-    // Card is in learning phase
+    // Card is in learning phase - use fixed intervals
     if (rating === RATING.AGAIN) {
       // Reset to first learning step
       newStepIndex = 0;
       newState = CARD_STATE.LEARNING;
-      const stepMinutes = steps[0] || 10;
-      dueAt = new Date(now.getTime() + stepMinutes * 60 * 1000);
+      dueAt = new Date(now.getTime() + LEARNING_INTERVALS.AGAIN * 60 * 1000);
     } else if (rating === RATING.HARD) {
-      // Stay at current step (or first step if new)
+      // Stay in learning with fixed 15 min interval
       newState = CARD_STATE.LEARNING;
-      const stepMinutes = steps[newStepIndex] || steps[0] || 10;
-      // Hard in learning: repeat same step with 1.5x delay
-      dueAt = new Date(now.getTime() + stepMinutes * 1.5 * 60 * 1000);
+      dueAt = new Date(now.getTime() + LEARNING_INTERVALS.HARD * 60 * 1000);
     } else if (rating === RATING.GOOD) {
-      // Advance to next step or graduate
-      newStepIndex = (state === CARD_STATE.NEW ? 0 : learning_step_index) + 1;
-      if (newStepIndex >= steps.length) {
-        // Graduate to review
-        newState = CARD_STATE.REVIEW;
-        newIntervalDays = 1; // Graduate with 1 day interval
-        newRepetitions = 1;
-        newEaseFactor = calculateNewEaseFactor(ease_factor, rating);
-        dueAt = new Date(now.getTime() + newIntervalDays * 24 * 60 * 60 * 1000);
-      } else {
-        // Move to next learning step
-        newState = CARD_STATE.LEARNING;
-        const stepMinutes = steps[newStepIndex] || 1440;
-        dueAt = new Date(now.getTime() + stepMinutes * 60 * 1000);
-      }
-    } else if (rating === RATING.EASY) {
-      // Graduate immediately with bonus
+      // Graduate to review with 1 day interval
+      newStepIndex = 1;
       newState = CARD_STATE.REVIEW;
-      newIntervalDays = 4; // Easy graduate: 4 days
+      newIntervalDays = 1;
       newRepetitions = 1;
       newEaseFactor = calculateNewEaseFactor(ease_factor, rating);
-      dueAt = new Date(now.getTime() + newIntervalDays * 24 * 60 * 60 * 1000);
+      // Schedule for local midnight of target day
+      return {
+        state: newState,
+        ease_factor: newEaseFactor,
+        interval_days: newIntervalDays,
+        repetitions: newRepetitions,
+        lapses: newLapses,
+        learning_step_index: newStepIndex,
+        due_at: computeLocalMidnight(newIntervalDays),
+        last_reviewed_at: toUTC(now),
+      };
+    } else if (rating === RATING.EASY) {
+      // Graduate immediately with 4 day interval
+      newState = CARD_STATE.REVIEW;
+      newIntervalDays = 4;
+      newRepetitions = 1;
+      newEaseFactor = calculateNewEaseFactor(ease_factor, rating);
+      // Schedule for local midnight of target day
+      return {
+        state: newState,
+        ease_factor: newEaseFactor,
+        interval_days: newIntervalDays,
+        repetitions: newRepetitions,
+        lapses: newLapses,
+        learning_step_index: newStepIndex,
+        due_at: computeLocalMidnight(newIntervalDays),
+        last_reviewed_at: toUTC(now),
+      };
     }
   } else {
     // Card is in review phase
@@ -202,8 +133,7 @@ export const scheduleNextReview = (progress, rating, deckOptions) => {
       newStepIndex = 0;
       // New interval after lapse
       newIntervalDays = Math.max(1, Math.round(interval_days * lapseIntervalPercent / 100));
-      const stepMinutes = steps[0] || 10;
-      dueAt = new Date(now.getTime() + stepMinutes * 60 * 1000);
+      dueAt = new Date(now.getTime() + LEARNING_INTERVALS.AGAIN * 60 * 1000);
     } else {
       // Successful review
       newRepetitions = repetitions + 1;
@@ -236,7 +166,17 @@ export const scheduleNextReview = (progress, rating, deckOptions) => {
       );
       newIntervalDays = Math.max(1, newIntervalDays);
 
-      dueAt = new Date(now.getTime() + newIntervalDays * 24 * 60 * 60 * 1000);
+      // Successful review: use local midnight scheduling
+      return {
+        state: newState,
+        ease_factor: newEaseFactor,
+        interval_days: newIntervalDays,
+        repetitions: newRepetitions,
+        lapses: newLapses,
+        learning_step_index: newStepIndex,
+        due_at: computeLocalMidnight(newIntervalDays),
+        last_reviewed_at: toUTC(now),
+      };
     }
   }
 
@@ -253,48 +193,129 @@ export const scheduleNextReview = (progress, rating, deckOptions) => {
 };
 
 /**
- * Calculate new SM-2 parameters based on quality grade (legacy)
- * @param {Object} progress - Current progress state
- * @param {number} quality - Quality grade (3=Hard, 4=Good, 5=Easy)
- * @returns {Object} New progress values
+ * Check if a card has sub-day (minutes-level) scheduling
+ * Cards in LEARNING state are scheduled in minutes, not days
+ * @param {Object} progress - Card progress object
+ * @returns {boolean} True if card is scheduled in sub-day intervals
  */
-export const calculateSM2 = (progress, quality) => {
-  let { repetitions, ease_factor, interval_days } = progress;
+export const isSubDayScheduled = (progress) => {
+  return progress?.state === CARD_STATE.LEARNING;
+};
 
-  // Calculate new ease factor
-  // EF' = EF + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02))
-  const q = quality;
-  const efDelta = 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02);
-  let newEaseFactor = ease_factor + efDelta;
-
-  // Clamp minimum EF to 1.3
-  if (newEaseFactor < 1.3) {
-    newEaseFactor = 1.3;
-  }
-
-  // Calculate new interval
-  let newIntervalDays;
-  if (repetitions === 0) {
-    newIntervalDays = 1;
-  } else if (repetitions === 1) {
-    newIntervalDays = 6;
+/**
+ * Format an interval for display
+ * @param {number} minutes - Interval in minutes
+ * @returns {string} Formatted interval string (e.g., "10m", "1h", "2d", "1mo")
+ */
+export const formatInterval = (minutes) => {
+  if (minutes < 60) {
+    return `${Math.round(minutes)}m`;
+  } else if (minutes < 1440) {
+    const hours = Math.round(minutes / 60);
+    return `${hours}h`;
   } else {
-    newIntervalDays = Math.round(interval_days * newEaseFactor);
+    const days = Math.round(minutes / 1440);
+    if (days >= 30) {
+      const months = Math.round(days / 30);
+      return `${months}mo`;
+    }
+    return `${days}d`;
   }
+};
 
-  // Increment repetitions (all current buttons are grade >= 3)
-  const newRepetitions = repetitions + 1;
+/**
+ * Preview next intervals for all ratings without applying changes
+ * @param {Object} progress - Current card progress
+ * @param {Object} deckOptions - Deck SM-2 options
+ * @returns {Object} Preview intervals in minutes for each rating { again, hard, good, easy }
+ */
+export const previewNextIntervals = (progress, deckOptions) => {
+  const {
+    easyBonus = 1.3,
+    hardIntervalFactor = 1.2,
+    lapseIntervalPercent = 10,
+    intervalModifier = 1.0,
+    maxIntervalDays = 36500,
+    learningSteps = '10m,1d',
+  } = deckOptions || {};
 
-  // Calculate due_at
-  const now = new Date();
-  const dueAt = new Date(now.getTime() + newIntervalDays * 24 * 60 * 60 * 1000);
+  const steps = parseLearningSteps(learningSteps);
+
+  const {
+    state = CARD_STATE.NEW,
+    ease_factor = 2.5,
+    interval_days = 0,
+    repetitions = 0,
+    learning_step_index = 0,
+  } = progress || {};
+
+  const intervals = {};
+
+  // Fixed intervals for learning phase (in minutes)
+  const LEARNING_INTERVALS = {
+    AGAIN: 2,      // 2 minutes
+    HARD: 10,      // 10 minutes
+    GOOD: 1440,    // 1 day
+    EASY: 4 * 1440 // 4 days
+  };
+
+  // Calculate for each rating
+  [RATING.AGAIN, RATING.HARD, RATING.GOOD, RATING.EASY].forEach((rating) => {
+    let intervalMinutes;
+
+    if (state === CARD_STATE.NEW || state === CARD_STATE.LEARNING) {
+      // Card is in learning phase - use fixed intervals
+      if (rating === RATING.AGAIN) {
+        intervalMinutes = LEARNING_INTERVALS.AGAIN;
+      } else if (rating === RATING.HARD) {
+        intervalMinutes = LEARNING_INTERVALS.HARD;
+      } else if (rating === RATING.GOOD) {
+        intervalMinutes = LEARNING_INTERVALS.GOOD;
+      } else if (rating === RATING.EASY) {
+        intervalMinutes = LEARNING_INTERVALS.EASY;
+      }
+    } else {
+      // Card is in review phase
+      if (rating === RATING.AGAIN) {
+        // Lapse: reset to first learning step
+        intervalMinutes = LEARNING_INTERVALS.AGAIN;
+      } else {
+        // Successful review - calculate new interval
+        const newEaseFactor = calculateNewEaseFactor(ease_factor, rating);
+        let baseInterval;
+
+        if (repetitions === 0) {
+          baseInterval = 1;
+        } else if (repetitions === 1) {
+          baseInterval = 6;
+        } else {
+          baseInterval = interval_days * newEaseFactor;
+        }
+
+        // Apply modifiers based on rating
+        if (rating === RATING.HARD) {
+          baseInterval = interval_days * hardIntervalFactor;
+        } else if (rating === RATING.EASY) {
+          baseInterval = baseInterval * easyBonus;
+        }
+
+        // Apply global interval modifier
+        baseInterval = baseInterval * intervalModifier;
+
+        // Cap at max interval
+        const intervalDays = Math.min(maxIntervalDays, Math.max(1, Math.round(baseInterval)));
+        intervalMinutes = intervalDays * 1440;
+      }
+    }
+
+    intervals[rating] = intervalMinutes;
+  });
 
   return {
-    repetitions: newRepetitions,
-    ease_factor: newEaseFactor,
-    interval_days: newIntervalDays,
-    due_at: toUTC(dueAt),
-    last_reviewed_at: toUTC(now),
+    again: intervals[RATING.AGAIN],
+    hard: intervals[RATING.HARD],
+    good: intervals[RATING.GOOD],
+    easy: intervals[RATING.EASY],
   };
 };
 
@@ -387,50 +408,95 @@ export const getDueDecks = async (userId, nowUTC = toUTC()) => {
     return { data: [], error: null };
   }
 
-  // For each deck, ensure progress and count due cards
-  const dueDecks = [];
+  const deckIds = decks.map((d) => d.id);
 
-  for (const deck of decks) {
-    // Ensure progress rows exist (use same nowUTC for consistent comparison)
-    await ensureProgressForDeck(userId, deck.id, nowUTC);
+  // Fetch all cards for all decks in a single query
+  const { data: allCards, error: cardsError } = await supabase
+    .from('cards')
+    .select('id, deck_id')
+    .in('deck_id', deckIds);
 
-    // Get cards in this deck
-    const { data: cards, error: cardsError } = await supabase
-      .from('cards')
-      .select('id')
-      .eq('deck_id', deck.id);
+  if (cardsError) {
+    console.error('Error fetching cards:', cardsError);
+    return { data: null, error: cardsError };
+  }
 
-    if (cardsError) {
-      console.error('Error fetching cards for deck:', deck.id, cardsError);
-      continue;
-    }
+  if (!allCards || allCards.length === 0) {
+    return { data: [], error: null };
+  }
 
-    if (!cards || cards.length === 0) {
-      continue;
-    }
+  // Build card ID to deck ID mapping
+  const cardToDeck = new Map(allCards.map((c) => [c.id, c.deck_id]));
+  const allCardIds = allCards.map((c) => c.id);
 
-    const cardIds = cards.map((c) => c.id);
+  // Ensure progress exists for all cards (single batch operation)
+  const { data: existingProgress, error: progressFetchError } = await supabase
+    .from('card_progress')
+    .select('card_id')
+    .eq('user_id', userId)
+    .in('card_id', allCardIds);
 
-    // Count due cards
-    const { count, error: countError } = await supabase
+  if (progressFetchError) {
+    console.error('Error fetching progress:', progressFetchError);
+    return { data: null, error: progressFetchError };
+  }
+
+  const existingCardIds = new Set((existingProgress || []).map((p) => p.card_id));
+  const missingCardIds = allCardIds.filter((id) => !existingCardIds.has(id));
+
+  // Insert missing progress rows in batch
+  if (missingCardIds.length > 0) {
+    const newRows = missingCardIds.map((cardId) => ({
+      user_id: userId,
+      card_id: cardId,
+      repetitions: 0,
+      ease_factor: 2.5,
+      interval_days: 0,
+      due_at: nowUTC,
+      state: CARD_STATE.NEW,
+      lapses: 0,
+      learning_step_index: 0,
+    }));
+
+    const { error: insertError } = await supabase
       .from('card_progress')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .in('card_id', cardIds)
-      .lte('due_at', nowUTC);
+      .insert(newRows);
 
-    if (countError) {
-      console.error('Error counting due cards:', countError);
-      continue;
-    }
-
-    if (count > 0) {
-      dueDecks.push({
-        ...deck,
-        dueCount: count,
-      });
+    if (insertError) {
+      console.error('Error inserting progress rows:', insertError);
+      // Continue anyway - we can still count existing progress
     }
   }
+
+  // Get all due progress in a single query
+  const { data: dueProgress, error: dueError } = await supabase
+    .from('card_progress')
+    .select('card_id')
+    .eq('user_id', userId)
+    .in('card_id', allCardIds)
+    .lte('due_at', nowUTC);
+
+  if (dueError) {
+    console.error('Error fetching due progress:', dueError);
+    return { data: null, error: dueError };
+  }
+
+  // Count due cards per deck
+  const deckDueCounts = new Map();
+  for (const progress of dueProgress || []) {
+    const deckId = cardToDeck.get(progress.card_id);
+    if (deckId) {
+      deckDueCounts.set(deckId, (deckDueCounts.get(deckId) || 0) + 1);
+    }
+  }
+
+  // Build result with only decks that have due cards
+  const dueDecks = decks
+    .filter((deck) => deckDueCounts.has(deck.id))
+    .map((deck) => ({
+      ...deck,
+      dueCount: deckDueCounts.get(deck.id),
+    }));
 
   return { data: dueDecks, error: null };
 };
@@ -498,30 +564,6 @@ export const getDueCards = async (userId, deckId, nowUTC = toUTC()) => {
 };
 
 /**
- * Grade a card and update its progress using SM-2 algorithm
- * @param {string} userId - The user ID
- * @param {string} cardId - The card ID
- * @param {number} quality - Quality grade (3=Hard, 4=Good, 5=Easy)
- * @returns {Object} { data: updatedProgress, error }
- * @deprecated Use gradeCardWithRating instead
- */
-export const gradeCard = async (userId, cardId, quality) => {
-  // Map legacy quality to new rating
-  let rating;
-  if (quality === QUALITY.HARD) {
-    rating = RATING.HARD;
-  } else if (quality === QUALITY.GOOD) {
-    rating = RATING.GOOD;
-  } else if (quality === QUALITY.EASY) {
-    rating = RATING.EASY;
-  } else {
-    rating = RATING.GOOD;
-  }
-
-  return gradeCardWithRating(userId, cardId, rating);
-};
-
-/**
  * Grade a card with new rating system (Again/Hard/Good/Easy)
  * @param {string} userId - The user ID
  * @param {string} cardId - The card ID
@@ -585,83 +627,109 @@ export const gradeCardWithRating = async (userId, cardId, rating, deckId = null)
   return { data: updated, error: null };
 };
 
-/**
- * Session persistence key generator
- * @param {string} userId - The user ID
- * @param {string} deckId - The deck ID
- * @returns {string} localStorage key
- */
-export const getSessionKey = (userId, deckId) => {
-  return `studySession:${userId}:${deckId}`;
-};
+// Re-export session functions for backward compatibility
+export { getSessionKey, saveSession, loadSession, clearSession } from './sessionService';
 
 /**
- * Save study session to localStorage
+ * Get ALL learning cards for a deck (regardless of due time)
+ * Use this to ensure sessions don't end while cards are still in learning state
  * @param {string} userId - The user ID
  * @param {string} deckId - The deck ID
- * @param {string[]} cardIds - Array of card IDs in the queue
- * @param {number} currentIndex - Current position in queue
+ * @returns {Object} { data: [{ card, progress }], error }
  */
-export const saveSession = (userId, deckId, cardIds, currentIndex) => {
-  const session = {
-    version: 1,
-    deckId,
-    userId,
-    cardIds,
-    currentIndex,
-    createdAt: toUTC(),
-  };
-  localStorage.setItem(getSessionKey(userId, deckId), JSON.stringify(session));
-};
+export const getAllLearningCards = async (userId, deckId) => {
+  // Get all cards in the deck
+  const { data: cards, error: cardsError } = await supabase
+    .from('cards')
+    .select('*')
+    .eq('deck_id', deckId);
 
-/**
- * Load study session from localStorage
- * @param {string} userId - The user ID
- * @param {string} deckId - The deck ID
- * @returns {Object|null} Session object or null if expired/missing
- */
-export const loadSession = (userId, deckId) => {
-  const key = getSessionKey(userId, deckId);
-  const stored = localStorage.getItem(key);
-
-  if (!stored) {
-    return null;
+  if (cardsError) {
+    console.error('Error fetching cards:', cardsError);
+    return { data: null, error: cardsError };
   }
 
-  try {
-    const session = JSON.parse(stored);
-
-    // Validate session structure
-    if (session.version !== 1 || session.userId !== userId || session.deckId !== deckId) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    // Check if session is older than 24 hours
-    const sessionTime = new Date(session.createdAt).getTime();
-    const now = Date.now();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-    if (now - sessionTime > maxAge) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    return session;
-  } catch (e) {
-    console.error('Error parsing session:', e);
-    localStorage.removeItem(key);
-    return null;
+  if (!cards || cards.length === 0) {
+    return { data: [], error: null };
   }
+
+  const cardIds = cards.map((c) => c.id);
+
+  // Get ALL cards in learning state (regardless of due_at)
+  const { data: progressRows, error: progressError } = await supabase
+    .from('card_progress')
+    .select('*')
+    .eq('user_id', userId)
+    .in('card_id', cardIds)
+    .eq('state', CARD_STATE.LEARNING)
+    .order('due_at', { ascending: true });
+
+  if (progressError) {
+    console.error('Error fetching learning cards:', progressError);
+    return { data: null, error: progressError };
+  }
+
+  // Build card + progress pairs
+  const cardMap = new Map(cards.map((c) => [c.id, c]));
+  const learningCards = (progressRows || [])
+    .map((progress) => ({
+      card: cardMap.get(progress.card_id),
+      progress,
+    }));
+
+  return { data: learningCards, error: null };
 };
 
 /**
- * Clear study session from localStorage
+ * Get sub-day (learning) cards that are not yet due but scheduled soon
+ * These are cards in LEARNING state with due_at in the future
  * @param {string} userId - The user ID
  * @param {string} deckId - The deck ID
+ * @param {string} nowUTC - Current time in UTC ISO string
+ * @returns {Object} { data: [{ card, progress }], error }
  */
-export const clearSession = (userId, deckId) => {
-  localStorage.removeItem(getSessionKey(userId, deckId));
+export const getSubDayCards = async (userId, deckId, nowUTC = toUTC()) => {
+  // Get all cards in the deck
+  const { data: cards, error: cardsError } = await supabase
+    .from('cards')
+    .select('*')
+    .eq('deck_id', deckId);
+
+  if (cardsError) {
+    console.error('Error fetching cards:', cardsError);
+    return { data: null, error: cardsError };
+  }
+
+  if (!cards || cards.length === 0) {
+    return { data: [], error: null };
+  }
+
+  const cardIds = cards.map((c) => c.id);
+
+  // Get learning cards that are not yet due (due_at > now, state = learning)
+  const { data: progressRows, error: progressError } = await supabase
+    .from('card_progress')
+    .select('*')
+    .eq('user_id', userId)
+    .in('card_id', cardIds)
+    .eq('state', CARD_STATE.LEARNING)
+    .gt('due_at', nowUTC)
+    .order('due_at', { ascending: true });
+
+  if (progressError) {
+    console.error('Error fetching sub-day progress:', progressError);
+    return { data: null, error: progressError };
+  }
+
+  // Build card + progress pairs
+  const cardMap = new Map(cards.map((c) => [c.id, c]));
+  const subDayCards = (progressRows || [])
+    .map((progress) => ({
+      card: cardMap.get(progress.card_id),
+      progress,
+    }));
+
+  return { data: subDayCards, error: null };
 };
 
 /**

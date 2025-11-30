@@ -4,6 +4,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { getDueDecks, getNextDueAt, toUTC } from '../../lib/srsService';
 import { listDecks } from '../../lib/decksService';
 import { LANGUAGES } from '../../lib/languages';
+import SelectDeckModal from '../../components/SelectDeckModal';
 import './dashboardPage.css';
 
 const formatNextDueMessage = (nextDueAt) => {
@@ -19,10 +20,12 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [dueDecks, setDueDecks] = useState([]);
+  const [allDecks, setAllDecks] = useState([]);
   const [hasDecks, setHasDecks] = useState(null);
   const [nextDueAt, setNextDueAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDeckModal, setShowDeckModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -46,12 +49,14 @@ const DashboardPage = () => {
 
     if (!allDecks || allDecks.length === 0) {
       setHasDecks(false);
+      setAllDecks([]);
       setDueDecks([]);
       setLoading(false);
       return;
     }
 
     setHasDecks(true);
+    setAllDecks(allDecks);
 
     const nowUTC = toUTC();
     const { data, error: fetchError } = await getDueDecks(user.id, nowUTC);
@@ -135,8 +140,8 @@ const DashboardPage = () => {
                 Next card due {formatNextDueMessage(nextDueAt)}
               </p>
             )}
-            <button onClick={() => navigate('/decks')} className="browse-decks-btn">
-              Browse Decks
+            <button onClick={() => setShowDeckModal(true)} className="browse-decks-btn">
+              Keep Studying
             </button>
           </div>
         )}
@@ -173,6 +178,21 @@ const DashboardPage = () => {
           </>
         )}
       </div>
+
+      <SelectDeckModal
+        isOpen={showDeckModal}
+        onClose={() => setShowDeckModal(false)}
+        decks={allDecks}
+        onSelect={(deckId) => {
+          setShowDeckModal(false);
+          if (deckId) {
+            navigate(`/preview/${deckId}`);
+          } else {
+            navigate('/preview');
+          }
+        }}
+        title="Choose Deck to Preview"
+      />
     </div>
   );
 };

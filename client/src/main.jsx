@@ -10,6 +10,7 @@ import SettingsPage from "./routes/settingsPage/SettingsPage";
 import SignInPage from "./routes/signInPage/SignInPage";
 import SignUpPage from "./routes/signUpPage/SignUpPage";
 import StudyPage from "./routes/studyPage/StudyPage";
+import PreviewPage from "./routes/previewPage/PreviewPage";
 import DashboardLayout from "./layouts/DashboardLayout";
 import { AuthProvider } from "./lib/AuthContext";
 import RequireAuth from "./lib/RequireAuth";
@@ -40,6 +41,8 @@ const router = createBrowserRouter([
       { path: "/decks/:deckId", element: <DeckDetailPage /> },
       { path: "/decks/:deckId/:cardId", element: <DeckDetailPage /> },
       { path: "/study/:deckId", element: <StudyPage /> },
+      { path: "/preview", element: <PreviewPage /> },
+      { path: "/preview/:deckId", element: <PreviewPage /> },
       { path: "/settings", element: <SettingsPage /> },
     ],
   },

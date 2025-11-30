@@ -755,3 +755,58 @@ export const getNextDueAt = async (userId, nowUTC = toUTC()) => {
   const nextDueAt = data && data.length > 0 ? data[0].due_at : null;
   return { data: nextDueAt, error: null };
 };
+
+/**
+ * Get upcoming review cards (future scheduled, state = REVIEW) for preview mode
+ * Does NOT include learning cards (those come from getSubDayCards)
+ * @param {string} userId - The user ID
+ * @param {string} deckId - The deck ID
+ * @param {string} nowUTC - Current time in UTC ISO string
+ * @param {number} limit - Maximum number of cards to return (default 10)
+ * @returns {Object} { data: [{ card, progress }], error }
+ */
+export const getUpcomingCards = async (userId, deckId, nowUTC = toUTC(), limit = 10) => {
+  // Get all cards in the deck
+  const { data: cards, error: cardsError } = await supabase
+    .from('cards')
+    .select('*')
+    .eq('deck_id', deckId);
+
+  if (cardsError) {
+    console.error('Error fetching cards:', cardsError);
+    return { data: null, error: cardsError };
+  }
+
+  if (!cards || cards.length === 0) {
+    return { data: [], error: null };
+  }
+
+  const cardIds = cards.map((c) => c.id);
+
+  // Get REVIEW state cards with due_at > now (future scheduled)
+  // Excludes LEARNING cards (those are handled separately by getSubDayCards)
+  const { data: progressRows, error: progressError } = await supabase
+    .from('card_progress')
+    .select('*')
+    .eq('user_id', userId)
+    .in('card_id', cardIds)
+    .eq('state', CARD_STATE.REVIEW)
+    .gt('due_at', nowUTC)
+    .order('due_at', { ascending: true })
+    .limit(limit);
+
+  if (progressError) {
+    console.error('Error fetching upcoming cards:', progressError);
+    return { data: null, error: progressError };
+  }
+
+  // Build card + progress pairs
+  const cardMap = new Map(cards.map((c) => [c.id, c]));
+  const upcomingCards = (progressRows || [])
+    .map((progress) => ({
+      card: cardMap.get(progress.card_id),
+      progress,
+    }));
+
+  return { data: upcomingCards, error: null };
+};

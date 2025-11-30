@@ -38,7 +38,14 @@ CREATE TABLE IF NOT EXISTS decks (
   name TEXT NOT NULL,
   language TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  -- SM-2 scheduler options
+  easy_bonus REAL DEFAULT 1.3,
+  hard_interval_factor REAL DEFAULT 1.2,
+  lapse_interval_percent INT DEFAULT 10,
+  interval_modifier REAL DEFAULT 1.0,
+  max_interval_days INT DEFAULT 36500,
+  learning_steps TEXT DEFAULT '10m,1d'
 );
 
 -- Enable RLS on decks
@@ -215,8 +222,16 @@ CREATE TABLE IF NOT EXISTS public.card_progress (
   due_at TIMESTAMP WITH TIME ZONE NOT NULL,
   last_reviewed_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  -- SM-2 extended fields
+  lapses INT NOT NULL DEFAULT 0,
+  state TEXT NOT NULL DEFAULT 'new',
+  learning_step_index INT NOT NULL DEFAULT 0,
   UNIQUE (user_id, card_id)
 );
+
+-- Index for efficient due card queries
+CREATE INDEX IF NOT EXISTS idx_card_progress_due 
+  ON public.card_progress (user_id, due_at);
 
 -- Enable RLS on card_progress
 ALTER TABLE public.card_progress ENABLE ROW LEVEL SECURITY;

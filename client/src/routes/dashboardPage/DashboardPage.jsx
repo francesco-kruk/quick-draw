@@ -1,16 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
-import { getDueDecks, toUTC } from '../../lib/srsService';
+import { getDueDecks, getNextDueAt, toUTC } from '../../lib/srsService';
 import { listDecks } from '../../lib/decksService';
 import { LANGUAGES } from '../../lib/languages';
 import './dashboardPage.css';
+
+const formatNextDueMessage = (nextDueAt) => {
+  if (!nextDueAt) return null;
+  const diffMs = new Date(nextDueAt).getTime() - Date.now();
+  if (diffMs <= 0) return null;
+  if (diffMs < 3600000) return 'in less than 1 hour';
+  const hours = Math.ceil(diffMs / 3600000);
+  return `in ${hours} hour${hours === 1 ? '' : 's'}`;
+};
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [dueDecks, setDueDecks] = useState([]);
   const [hasDecks, setHasDecks] = useState(null);
+  const [nextDueAt, setNextDueAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -49,8 +59,22 @@ const DashboardPage = () => {
     if (fetchError) {
       setError('Failed to load due decks. Please try again.');
       console.error('Error loading due decks:', fetchError);
+      setLoading(false);
+      return;
+    }
+
+    setDueDecks(data || []);
+
+    // If no due decks, fetch next due time
+    if (!data || data.length === 0) {
+      const { data: nextDue, error: nextDueError } = await getNextDueAt(user.id, nowUTC);
+      if (nextDueError) {
+        console.error('Error fetching next due:', nextDueError);
+      } else {
+        setNextDueAt(nextDue);
+      }
     } else {
-      setDueDecks(data || []);
+      setNextDueAt(null);
     }
 
     setLoading(false);
@@ -106,6 +130,11 @@ const DashboardPage = () => {
             <div className="empty-icon">🎉</div>
             <h2>No cards due!</h2>
             <p>Great job! You've reviewed all your cards for now.</p>
+            {nextDueAt && formatNextDueMessage(nextDueAt) && (
+              <p className="next-due-info">
+                Next card due {formatNextDueMessage(nextDueAt)}
+              </p>
+            )}
             <button onClick={() => navigate('/decks')} className="browse-decks-btn">
               Browse Decks
             </button>

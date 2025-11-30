@@ -89,3 +89,83 @@ export const deleteDeck = async (id) => {
 
   return { error };
 };
+
+/**
+ * Default SM-2 deck options
+ */
+const DEFAULT_DECK_OPTIONS = {
+  easyBonus: 1.3,
+  hardIntervalFactor: 1.2,
+  lapseIntervalPercent: 10,
+  intervalModifier: 1.0,
+  maxIntervalDays: 36500,
+  learningSteps: '10m,1d',
+};
+
+/**
+ * Get SM-2 options for a deck
+ * @param {string} deckId - The deck ID
+ * @returns {Object} { data: deckOptions, error }
+ */
+export const getDeckOptions = async (deckId) => {
+  const { data, error } = await supabase
+    .from('decks')
+    .select('easy_bonus, hard_interval_factor, lapse_interval_percent, interval_modifier, max_interval_days, learning_steps')
+    .eq('id', deckId)
+    .single();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  // Map snake_case to camelCase and apply defaults for null values
+  const options = {
+    easyBonus: data.easy_bonus ?? DEFAULT_DECK_OPTIONS.easyBonus,
+    hardIntervalFactor: data.hard_interval_factor ?? DEFAULT_DECK_OPTIONS.hardIntervalFactor,
+    lapseIntervalPercent: data.lapse_interval_percent ?? DEFAULT_DECK_OPTIONS.lapseIntervalPercent,
+    intervalModifier: data.interval_modifier ?? DEFAULT_DECK_OPTIONS.intervalModifier,
+    maxIntervalDays: data.max_interval_days ?? DEFAULT_DECK_OPTIONS.maxIntervalDays,
+    learningSteps: data.learning_steps ?? DEFAULT_DECK_OPTIONS.learningSteps,
+  };
+
+  return { data: options, error: null };
+};
+
+/**
+ * Update SM-2 options for a deck
+ * @param {string} deckId - The deck ID
+ * @param {Object} opts - The options to update
+ * @returns {Object} { data: updatedOptions, error }
+ */
+export const updateDeckOptions = async (deckId, opts) => {
+  const updates = {};
+  if (opts.easyBonus !== undefined) updates.easy_bonus = opts.easyBonus;
+  if (opts.hardIntervalFactor !== undefined) updates.hard_interval_factor = opts.hardIntervalFactor;
+  if (opts.lapseIntervalPercent !== undefined) updates.lapse_interval_percent = opts.lapseIntervalPercent;
+  if (opts.intervalModifier !== undefined) updates.interval_modifier = opts.intervalModifier;
+  if (opts.maxIntervalDays !== undefined) updates.max_interval_days = opts.maxIntervalDays;
+  if (opts.learningSteps !== undefined) updates.learning_steps = opts.learningSteps;
+
+  const { data, error } = await supabase
+    .from('decks')
+    .update(updates)
+    .eq('id', deckId)
+    .select('easy_bonus, hard_interval_factor, lapse_interval_percent, interval_modifier, max_interval_days, learning_steps')
+    .single();
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  // Map back to camelCase
+  const options = {
+    easyBonus: data.easy_bonus,
+    hardIntervalFactor: data.hard_interval_factor,
+    lapseIntervalPercent: data.lapse_interval_percent,
+    intervalModifier: data.interval_modifier,
+    maxIntervalDays: data.max_interval_days,
+    learningSteps: data.learning_steps,
+  };
+
+  return { data: options, error: null };
+};

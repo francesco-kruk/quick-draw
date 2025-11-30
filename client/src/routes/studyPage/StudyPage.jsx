@@ -5,12 +5,13 @@ import { getDeck } from '../../lib/decksService';
 import {
   ensureProgressForDeck,
   getDueCards,
-  gradeCard,
+  gradeCardWithRating,
   saveSession,
   loadSession,
   clearSession,
   toUTC,
-  QUALITY,
+  RATING,
+  CARD_STATE,
 } from '../../lib/srsService';
 import './studyPage.css';
 
@@ -130,7 +131,7 @@ const StudyPage = () => {
     setRevealed(true);
   };
 
-  const handleGrade = async (quality) => {
+  const handleGrade = async (rating) => {
     if (grading) return;
 
     const currentCard = queue[currentIndex];
@@ -139,33 +140,75 @@ const StudyPage = () => {
     setGrading(true);
 
     try {
-      const { error: gradeError } = await gradeCard(
+      const { error: gradeError } = await gradeCardWithRating(
         user.id,
         currentCard.card.id,
-        quality
+        rating,
+        deckId
       );
 
       if (gradeError) {
         throw new Error('Failed to save grade');
       }
 
-      // Move to next card
-      const newIndex = currentIndex + 1;
-
-      if (newIndex >= queue.length) {
-        // Session complete
-        clearSession(user.id, deckId);
-        setCompleted(true);
+      // For learning cards with Again rating, we need to refresh the queue
+      // to get the updated due time and potentially requeue the card
+      if (rating === RATING.AGAIN && 
+          (currentCard.progress.state === CARD_STATE.LEARNING || 
+           currentCard.progress.state === CARD_STATE.NEW)) {
+        // Card will be requeued with a short delay - refresh from DB
+        const nowUTC = toUTC();
+        const { data: freshDueCards } = await getDueCards(user.id, deckId, nowUTC);
+        
+        if (freshDueCards && freshDueCards.length > 0) {
+          setQueue(freshDueCards);
+          setCurrentIndex(0);
+          setRevealed(false);
+          saveSession(
+            user.id,
+            deckId,
+            freshDueCards.map((item) => item.card.id),
+            0
+          );
+        } else {
+          clearSession(user.id, deckId);
+          setCompleted(true);
+        }
       } else {
-        setCurrentIndex(newIndex);
-        setRevealed(false);
-        // Update session
-        saveSession(
-          user.id,
-          deckId,
-          queue.map((item) => item.card.id),
-          newIndex
-        );
+        // Move to next card
+        const newIndex = currentIndex + 1;
+
+        if (newIndex >= queue.length) {
+          // Check if there are more due cards (learning cards may have become due)
+          const nowUTC = toUTC();
+          const { data: freshDueCards } = await getDueCards(user.id, deckId, nowUTC);
+          
+          if (freshDueCards && freshDueCards.length > 0) {
+            setQueue(freshDueCards);
+            setCurrentIndex(0);
+            setRevealed(false);
+            saveSession(
+              user.id,
+              deckId,
+              freshDueCards.map((item) => item.card.id),
+              0
+            );
+          } else {
+            // Session complete
+            clearSession(user.id, deckId);
+            setCompleted(true);
+          }
+        } else {
+          setCurrentIndex(newIndex);
+          setRevealed(false);
+          // Update session
+          saveSession(
+            user.id,
+            deckId,
+            queue.map((item) => item.card.id),
+            newIndex
+          );
+        }
       }
     } catch (err) {
       console.error('Error grading card:', err);
@@ -189,12 +232,14 @@ const StudyPage = () => {
           handleReveal();
         }
       } else {
-        if (e.key === '1') {
-          handleGrade(QUALITY.HARD);
+        if (e.key === '0' || e.key.toLowerCase() === 'a') {
+          handleGrade(RATING.AGAIN);
+        } else if (e.key === '1') {
+          handleGrade(RATING.HARD);
         } else if (e.key === '2') {
-          handleGrade(QUALITY.GOOD);
+          handleGrade(RATING.GOOD);
         } else if (e.key === '3') {
-          handleGrade(QUALITY.EASY);
+          handleGrade(RATING.EASY);
         }
       }
     },
@@ -258,6 +303,8 @@ const StudyPage = () => {
 
   const currentCard = queue[currentIndex];
   const progress = `${currentIndex + 1} / ${queue.length}`;
+  const cardState = currentCard?.progress?.state || CARD_STATE.NEW;
+  const isLearning = cardState === CARD_STATE.LEARNING || cardState === CARD_STATE.NEW;
 
   return (
     <div className="study-page">
@@ -268,7 +315,12 @@ const StudyPage = () => {
             ← Back
           </button>
           <h1 className="deck-title">{deck?.name || 'Study'}</h1>
-          <span className="progress-indicator">{progress}</span>
+          <div className="header-right">
+            {isLearning && (
+              <span className="state-badge learning">Learning</span>
+            )}
+            <span className="progress-indicator">{progress}</span>
+          </div>
         </div>
 
         {/* Card */}
@@ -299,7 +351,15 @@ const StudyPage = () => {
           ) : (
             <div className="grade-buttons">
               <button
-                onClick={() => handleGrade(QUALITY.HARD)}
+                onClick={() => handleGrade(RATING.AGAIN)}
+                className="grade-btn again"
+                disabled={grading}
+              >
+                Again
+                <span className="keyboard-hint">0</span>
+              </button>
+              <button
+                onClick={() => handleGrade(RATING.HARD)}
                 className="grade-btn hard"
                 disabled={grading}
               >
@@ -307,7 +367,7 @@ const StudyPage = () => {
                 <span className="keyboard-hint">1</span>
               </button>
               <button
-                onClick={() => handleGrade(QUALITY.GOOD)}
+                onClick={() => handleGrade(RATING.GOOD)}
                 className="grade-btn good"
                 disabled={grading}
                 autoFocus
@@ -316,7 +376,7 @@ const StudyPage = () => {
                 <span className="keyboard-hint">2</span>
               </button>
               <button
-                onClick={() => handleGrade(QUALITY.EASY)}
+                onClick={() => handleGrade(RATING.EASY)}
                 className="grade-btn easy"
                 disabled={grading}
               >

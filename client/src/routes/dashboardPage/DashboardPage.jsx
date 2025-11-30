@@ -9,11 +9,42 @@ import './dashboardPage.css';
 
 const formatNextDueMessage = (nextDueAt) => {
   if (!nextDueAt) return null;
-  const diffMs = new Date(nextDueAt).getTime() - Date.now();
-  if (diffMs <= 0) return null;
-  if (diffMs < 3600000) return 'in less than 1 hour';
-  const hours = Math.ceil(diffMs / 3600000);
-  return `in ${hours} hour${hours === 1 ? '' : 's'}`;
+
+  const now = new Date();
+  const dueDate = new Date(nextDueAt);
+
+  // If due in the past or now, return null
+  if (dueDate.getTime() <= now.getTime()) return null;
+
+  // Calculate end of today (23:59:59.999 local time)
+  const endOfToday = new Date(now);
+  endOfToday.setHours(23, 59, 59, 999);
+
+  // Calculate start of tomorrow (00:00:00 local time)
+  const startOfTomorrow = new Date(now);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  startOfTomorrow.setHours(0, 0, 0, 0);
+
+  // Calculate end of tomorrow (23:59:59.999 local time)
+  const endOfTomorrow = new Date(startOfTomorrow);
+  endOfTomorrow.setHours(23, 59, 59, 999);
+
+  // If due today (before end of today): show minutes
+  if (dueDate.getTime() <= endOfToday.getTime()) {
+    const diffMs = dueDate.getTime() - now.getTime();
+    const minutes = Math.max(1, Math.ceil(diffMs / 60000));
+    return `in ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  }
+
+  // If due tomorrow
+  if (dueDate.getTime() >= startOfTomorrow.getTime() && dueDate.getTime() <= endOfTomorrow.getTime()) {
+    return 'tomorrow';
+  }
+
+  // If due after tomorrow: show days
+  const diffMs = dueDate.getTime() - startOfTomorrow.getTime();
+  const days = Math.max(2, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+  return `in ${days} days`;
 };
 
 const DashboardPage = () => {

@@ -162,14 +162,16 @@ const StudyPage = () => {
         throw new Error('Failed to save grade');
       }
 
-      // For learning cards with Again or Hard rating, we need to refresh the queue
-      // to get the updated due time and potentially requeue the card
-      const isAgainOrHard = rating === RATING.AGAIN || rating === RATING.HARD;
+      // For learning cards with Again rating, we need to refresh the queue
+      // to get the updated due time and potentially requeue the card.
+      // Hard-rated cards are scheduled for ~10 minutes later but should NOT loop in-session;
+      // they will only appear if the session continues long enough for them to become due.
+      const isAgain = rating === RATING.AGAIN;
       const isLearningOrNew = currentCard.progress.state === CARD_STATE.LEARNING || 
                               currentCard.progress.state === CARD_STATE.NEW;
       
-      if (isAgainOrHard && isLearningOrNew) {
-        // Card will be requeued with a short delay - refresh from DB
+      if (isAgain && isLearningOrNew) {
+        // Card will be requeued with a short delay (2 min) - refresh from DB
         const nowUTC = toUTC();
         const { data: freshDueCards } = await getDueCards(user.id, deckId, nowUTC);
         

@@ -38,6 +38,7 @@ jobs:
           path: |
             client/dist
             client/server.js
+            client/server
             client/package.json
             client/package-lock.json
 
